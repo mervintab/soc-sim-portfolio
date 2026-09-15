@@ -1,15 +1,15 @@
 {
   "profile": {
-    "name": "[First] [Last]",
-    "role": "[Role] · [Team]",
-    "tagline": "[One sentence — your focus areas and what you're working toward.]",
-    "location": "[City, Country]",
+    "name": "Mervin Tabernero",
+    "role": "Aspiring SOC Analyst/ Blue Team",
+    "tagline": "Transitioning from healthcare IT into SOC operations, focused on threat detection and Azure security.",
+    "location": "Raleigh, NC, USA",
     "photo": "",
-    "theme": "operator",
+    "theme": "arctic",
     "links": {
-      "linkedin": "",
-      "github": "",
-      "email": ""
+      "linkedin": "https://linkedin.com/mervintab",
+      "github": "https://github.com/mervintab",
+      "email": "mervinofzetaphi@gmail.com"
     }
   },
   "alerts": [],
