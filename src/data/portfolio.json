@@ -12,6 +12,46 @@
       "email": "mervinofzetaphi@gmail.com"
     }
   },
-  "alerts": [],
+  "alerts": [
+    {
+      "id": "ALT-001",
+      "alertName": "Sensitive credential memory read",
+      "alertId": "dab2fa9b9a-3da1-43f5-98ab-98070bcad9bb_1",
+      "date": "2026-09-15",
+      "severity": "High",
+      "hostOrAccount": "SOCSIM-DC/dave.brown",
+      "dateTime": "August 31, 2026, 11:05:57 PM",
+      "whatTriggered": "A process (PID 1864, masquerading as svchost.exe) opened a handle to lsass.exe (PID 840) and performed 1456 reads of process memory. This behavior is the exact definition of Defender's \"Sensitive Credential Memory Detection (T1003.001 -LSASS Memory) is built to catch.",
+      "whyTriggered": "The LSASS holds cached credentials, NTLM hashes, and Kerberos tickets in memory. Any non-system process reading its memory space is treated as high confidence credential-theft indicator, especially when accompanied by  a masquerading binary and a known credential-theft tool DLL loads.",
+      "whatHappened": "At 11:03:02 PM SOCSIM\\dave.brown authenticated via a Network logon with domain Admin rights - the point at which the account was already compromised. At the same time, a svchost.exe process was spawned remotely via WMI, sourced from SOCSIM-SRV01 (172.31.6.185).\nAt 11:03:49 PM, a malicious file name svchost.exe was pushed to the DC via $$ administrative share (SMB) from 172.31.6.185 and  executed from C:\\WIndows\\Temp\\ -- not the legitimate System32 location. It ran with the command line:\nsvchost.exe privilege::debug sekurlsa::logonpasswords exit\nThis is a well known Mimikatz CLi syntax: privilege:: debug elevates the the SeDebugPrivilege required to touch LSASS, and sekurlsa::logonpasswords is Mimikatz's core credential dumping module.\nImmediately after the execution, the process loaded cryptdll.dll, samlib.dll, WinSCard.dll, and hid.dll in sequence -- the signature DLL -loading fingerprint of Mimikatz. It then opened a handle to the lsass.exe and, at 11:05:57 PM read its process memory (1456 reads/65402258 bytes copied).\nDefender detected and quarantined the dropped file (EUS:Win32/CustomEnterpriseBlock) as a remediation -- but this remediation occured after the process had already executed  and begun reading LSASS memory (11:06:36PM), not before.",
+      "evidence": "[1864] svchost.exe  — Path: C:\\Windows\\Temp\\svchost.exe (masquerade — real svchost = System32)\nCommand line: privilege::debug sekurlsa::logonpasswords exit\nSHA1: e3b6ea8c46fa831cec6f235a5cf48b38a4ae8d69 (mimikatz.exe hash)\nIntegrity level: High | User: SOCSIM\\dave.brown (real svchost = SYSTEM/System integrity)\nSource device: SOCSIM-SRV01 / 172.31.6.185, delivered via C$ admin share\nlsass.exe read: 1,456 reads, 6,402,256 bytes copied\nDefender remediation: EUS:Win32/CustomEnterpriseBlock — quarantined post-execution\n",
+      "wasSuccessful": "Yes",
+      "verdict": "Malicious",
+      "verdictJustification": "Multiple indicators confirm malicious credential-theft activity: (1) a binary masquerading as a legitimate svchost.exe running from a non-standard location with elevated permission under a standard user account., (2) literal Mimikatz command line sysntax, (3) the signature Mimikatz DLL-loading pattern, (4) delivery via lateral movement over WMI/SMB admin shares from an internal host, (5) a Domain Admin account authenticating and conducting hands-on-keyboard activity, and (6) Defender's own correlation of the alert into a High-Severity, 19/23 aleet incident titled \"Hands-on keyboard attack was launched from a compromised account\".",
+      "investigationSteps": [
+        "Opened the Alert \"Sensitive credential memory read\" in Defender and reviewed the alert story/Process Tree",
+        "Noted the affected host was a Domain COntroller (socsim-dc) and the account was SOCSIdave.brown -- classfied as high risk given the machine involved is a Domain controller.",
+        "Checked the linked incident('Hands-on keyboard attack was launched from a compromise account') to understand the broader attack chain rather than viewing the alert in isolation.",
+        "Walked the process tree chronologically: identified the 11:03:02:PM Domain Admin network logon and WMI-based remote process creation.",
+        "Pulled the raw process/event detaisl for PID 1864 and confirmed the path (C:\\Windows\\Temp\\ - not system32), the command line, and the SHA1/creation time mismatch indicating a pre-staged tool.",
+        "Review the loaded - files( crypt.dll, samlib.dll, WinSCard.dll, hid.dll) abd recognized the Mimikatz DLL fingerprint.",
+        "Confirmed the handle-open, and memory-read events  against lsass.exe (PID840), noting the byte count and read count as evidence of a completed dump, not just an attempt.",
+        "Checked Defender's remediation status and confirmed the file was quarantined, but onluy after the credential-read activity already occured.",
+        "Mapped all the observed behavior to the MITRE ATT&CK techniques for the write-up"
+      ],
+      "queries": "",
+      "categorisation": "TP",
+      "escalation": "Urgent",
+      "containment": "Force and immediate credential reset for SOCSIM\\dave.brown and treat the account as fully compromised, not just the endpoint.\nIsolate soc-sim and SOCSIM_SRV01 (172.31.6.185) pending full forensic review.\nAudit all activities ferformed under dave.brown's Domain Admin sessions.\nRevoew SOCSIM-SRV01 for how it was compromised.\nHunt across the environment for the same file hash (e3b6ea8c46fa831cec6f235a5cf48b38a4ae8d69) or the same cmdline pattern (sekurlsa::logonpasswords) on other hosts.\n",
+      "alertTuning": "No tuning required.",
+      "lessonsLearned": "Detection worked but the remediation happened only after Mimikatz had already loaded.\nThe path mismatch (Temp VS System32) was the single fastest tell that this was not a legitimate svchost.exe -- worth remembering to check process image path first.\nRemember to chekc for a linked incident before writng up any individual alert.\nThis was a good first exposure to reading Mimikatz CLI syntax and associated DLLs -- worth commiting to memory as fast-recognition patterns for future alerts.",
+      "tools": [
+        "Microsoft Defender",
+        "VirusTotal"
+      ],
+      "customSections": [],
+      "verified": false
+    }
+  ],
   "bec": []
 }
